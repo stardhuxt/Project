@@ -1,0 +1,132 @@
+<?php
+$time_start = microtime(true); 
+require_once(__DIR__ . '/includes/autoload.php');
+
+if(isset($_GET['a']) && isset($action[$_GET['a']])) {
+	$page_name = $action[$_GET['a']];
+} else {
+	$page_name = 'welcome';
+}
+
+if(!isAjax()) {
+	$TMPL['token_id'] = generateToken();
+}
+
+// Extra class for the content [main and sidebar]
+$TMPL['content_class'] = ' content-'.$page_name;
+
+require_once("./sources/{$page_name}.php");
+
+$TMPL['styles'] = '';
+// Load the head plugins
+foreach($plugins as $plugin) {
+	if(array_intersect(array("8"), str_split($plugin['type']))) {
+		$TMPL['styles'] .= "\n<link href=\"".$CONF['url']."/plugins/".$plugin['name']."/".$plugin['name'].".css\" rel=\"stylesheet\" type=\"text/css\">";
+	}
+}
+
+$TMPL['scripts'] = '';
+foreach($plugins as $plugin) {
+	if(array_intersect(array("9"), str_split($plugin['type']))) {
+		$TMPL['scripts'] .= "\n<script type=\"text/javascript\" src=\"".$CONF['url']."/plugins/".$plugin['name']."/".$plugin['name'].".js\"></script>";
+	}
+}
+
+$TMPL['site_url'] = $CONF['url'];
+
+if(isAjax()) {
+	echo json_encode(array('content' => PageMain(), 'title' => $TMPL['title']));
+	mysqli_close($db);
+	return;
+}
+
+$TMPL['content'] = PageMain();
+
+if(!empty($user['username'])) {
+	$TMPL['menu'] = menu($user);
+	$TMPL['url_logo'] = permalink($CONF['url'].'/index.php?a=feed');
+} else {
+	$TMPL['menu'] = menu(false);
+	$TMPL['url_logo'] = permalink($CONF['url'].'/index.php?a=welcome');
+}
+
+$TMPL['url'] = $CONF['url'];
+$TMPL['footer'] = $settings['title'];
+$TMPL['footer_url'] = permalink($CONF['url'].'/index.php?a=info&b=');
+$TMPL['year'] = date('Y');
+$TMPL['info_urls'] = info_urls();
+$TMPL['powered_by'] = 'Powered by <a href="'.$url.'" target="_blank">'.$name.'</a>.';
+$TMPL['language'] = getLanguage($CONF['url'], null, 1);
+$TMPL['tracking_code'] = $settings['tracking_code'];	
+$TMPL['search_users_url'] = permalink($CONF['url'].'/index.php?a=search&q=');
+$TMPL['search_tags_url'] = permalink($CONF['url'].'/index.php?a=search&tag=');
+$TMPL['search_groups_url'] = permalink($CONF['url'].'/index.php?a=search&groups=');
+$TMPL['search_pages_url'] = permalink($CONF['url'].'/index.php?a=search&pages=');
+$LNG['search_for_people'] = $LNG['search_for_people'].($settings['pages'] ? $LNG['search_pages'] : '').($settings['groups'] ? $LNG['search_groups'] : '');
+
+$skin = new skin('wrapper');
+
+echo $skin->make();
+
+mysqli_close($db);
+?>
+<!DOCTYPE html>
+<html class="{$lng->lang_dir}" dir="{$lng->lang_dir}">
+<head>
+<meta charset="UTF-8" />
+<title>{$title}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link rel="shortcut icon" href="{$url}/{$theme_path}/{$theme_name}/images/favicon.png">
+<link href="{$url}/{$theme_path}/{$theme_name}/style.css" rel="stylesheet" type="text/css">
+<script type="text/javascript">baseUrl = "{$url}"; token_id = "{$token_id}"; search_users_url = "{$search_users_url}"; search_tags_url = "{$search_tags_url}"; search_groups_url = "{$search_groups_url}"; search_pages_url = "{$search_pages_url}"; lng_download = "{$lng->download}"; lng_close = "{$lng->close}"; lng_just_now = "{$lng->just_now}"; lng_ta_second = "{$lng->ta_second}"; lng_ta_seconds = "{$lng->seconds}"; lng_ta_minute = "{$lng->ta_minute}"; lng_ta_minutes = "{$lng->ta_minutes}"; lng_ta_hour = "{$lng->ta_hour}"; lng_ta_hours = "{$lng->ta_hours}"; lng_ta_day = "{$lng->ta_day}"; lng_ta_days = "{$lng->ta_days}"; lng_ta_week = "{$lng->ta_week}"; lng_ta_weeks = "{$lng->ta_weeks}"; lng_ta_month = "{$lng->ta_month}"; lng_ta_months = "{$lng->ta_months}"; lng_ta_year = "{$lng->ta_year}"; lng_ta_years = "{$lng->ta_years}"; lng_ago = "{$lng->ago}"; lng_dir = "{$lng->lang_dir}";</script>
+<script type="text/javascript" src="{$url}/{$theme_url}/js/jquery.js"></script>
+<script type="text/javascript" src="{$url}/{$theme_url}/js/jquery.timeago.js"></script>
+<script type="text/javascript" src="{$url}/{$theme_url}/js/functions.js"></script>{$styles}{$scripts}
+</head>
+<body>
+<div id="loading-bar"><dd></dd><dt></dt></div>
+  
+  {$message}
+<div class="page-inner">
+	<div class="page-input-container">
+		<div><strong>{$lng->at_a_glance}</strong></div>
+			<div class="dash-stats columns"><div class="dash-half"><div class="dash-values">{$online_users}</div>{$lng->online_users}</div><div class="dash-half"><ul class="chart"></ul></div></div>
+			<div class="dash-stats columns"><div class="dash-half"><div class="dash-values">{$users_today}</div>{$lng->users} {$users_percentage}</div><div class="dash-half"><ul class="chart">{$users_stats}</ul></div></div>
+			<div class="dash-stats columns"><div class="dash-half"><div class="dash-values">{$messages_today}</div>{$lng->messages} {$messages_percentage}</div><div class="dash-half"><ul class="chart">{$messages_stats}</ul></div></div>
+			<div class="dash-stats columns"><div class="dash-half"><div class="dash-values">{$comments_today}</div>{$lng->comments} {$comments_percentage}</div><div class="dash-half"><ul class="chart">{$comments_stats}</ul></div></div>
+			<div class="dash-stats columns"><div class="dash-half"><div class="dash-values">{$shares_today}</div>{$lng->shares} {$shares_percentage}</div><div class="dash-half"><ul class="chart">{$shares_stats}</ul></div></div>
+			<div class="dash-stats columns"><div class="dash-half"><div class="dash-values">{$likes_today}</div>{$lng->likes} {$likes_percentage}</div><div class="dash-half"><ul class="chart">{$likes_stats}</ul></div></div>		
+			<div class="dash-stats columns"><div class="dash-half"><div class="dash-values">{$pages_today}</div>{$lng->pages} {$pages_percentage}</div><div class="dash-half"><ul class="chart">{$pages_stats}</ul></div></div>
+			<div class="dash-stats columns"><div class="dash-half"><div class="dash-values">{$groups_today}</div>{$lng->groups} {$groups_percentage}</div><div class="dash-half"><ul class="chart">{$groups_stats}</ul></div></div>
+			<div class="dashboard-info"></div>
+	</div>
+</div>
+<div class="message-divider"></div>
+<div class="page-inner">
+	<div class="page-input-container">
+		<div><strong>{$lng->site_info}</strong></div>
+		<div class="dashboard-info">
+			{$site_version}
+		</div>
+		<div class="dashboard-info">
+			{$site_loaded}
+		</div>
+	</div>
+</div>
+  <div class="modal-background"></div>
+<div class="footer">
+	<div class="footer-container">
+		<div class="footer-links">
+			{$info_urls}<span><a href="{$url}/index.php?a=admin" rel="loadpage">{$lng->title_admin}</a></span>
+		</div>
+		<div class="footer-languages">
+			{$lng->language}: {$language}
+		</div>
+		<div class="footer-languages">
+			Copyright &copy; {$year} {$footer}. {$lng->all_rights_reserved}. {$powered_by}
+		</div>
+	</div>
+</div>
+{$tracking_code}
+</body>
+</html>
